@@ -3,7 +3,9 @@
 #include <GLFW/glfw3.h>
 #include <cmath>
 
-int OPENGL_CLIENT_API_VERSION = 3; // minimal version of openGL the client must use.
+const unsigned int OPENGL_CLIENT_API_VERSION = 3; // minimal version of openGL the client must use.
+const unsigned int SCR_WIDTH = 800;
+const unsigned int SCR_HEIGHT = 600;
 
 void setupGlfw()
 {
@@ -32,12 +34,127 @@ void processInput(GLFWwindow* window)
 	}
 }
 
+void checkShaderCompilation(unsigned int shader, const char* type)
+{
+	int success;
+	char infoLog[512];
+	glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
+	if (!success)
+	{
+		glGetShaderInfoLog(shader, sizeof(infoLog), NULL, infoLog);
+		std::cout << "ERROR::SHADER::"<< type <<"::COMPILATION_FAILED\n" << infoLog << std::endl;
+	}
+}
+
+
+void checkProgramLink(unsigned int program)
+{
+	int success;
+	char infoLog[512];
+	glGetProgramiv(program, GL_LINK_STATUS, &success);
+	if (!success)
+	{
+		glGetProgramInfoLog(program, sizeof(infoLog), NULL, infoLog);
+		std::cout << "ERROR::SHADER::PROGRAM::LINK_FAILED\n" << infoLog << std::endl;
+	}
+}
+
+unsigned int createVertexShader()
+{
+	// vertex shader in GLSL language
+	const char* vertexShaderSource = "#version 330 core\n"
+	"layout (location = 0) in vec3 aPos;\n"
+	"void main()\n"
+	"{\n"
+	"   gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);\n"
+	"}\0";
+
+	// create a vertex shader
+	unsigned int vertexShader;
+	vertexShader = glCreateShader(GL_VERTEX_SHADER);
+	// source the code into the created shader and compile
+	glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
+	glCompileShader(vertexShader);
+	checkShaderCompilation(vertexShader, "VERTEX");
+	return vertexShader;
+}
+
+unsigned int createFragmentShader()
+{
+	const char* fragmentShaderSource = "#version 330 core\n"
+	"out vec4 FragColor;\n"
+	"void main()\n"
+	"{\n"
+	"    FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);\n"
+	"}\0";
+
+	unsigned int fragmentShader;
+	fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+	glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);
+	glCompileShader(fragmentShader);
+	checkShaderCompilation(fragmentShader, "FRAGMENT");
+	return fragmentShader;
+}
+
+unsigned int createShaderProgram() 
+{
+	unsigned int vertexShader = createVertexShader();
+	unsigned int fragmentShader = createFragmentShader();
+	// create a program to link the vertex and fragment shaders
+	unsigned int shaderProgram;
+	shaderProgram = glCreateProgram();
+	glAttachShader(shaderProgram, vertexShader);
+	glAttachShader(shaderProgram, fragmentShader);
+	glLinkProgram(shaderProgram);
+	checkProgramLink(shaderProgram);
+
+	// after shaders are linked we can delete them
+	glDeleteShader(shaderProgram);
+	glDeleteShader(fragmentShader);
+
+	return shaderProgram;
+}
+
+unsigned int createVertexArrayObject()
+{
+
+	float vertices[] = {
+	//    x      y      z
+		 0.0f,  0.5f,  0.0f, // A
+		-0.5f, -0.5f,  0.0f, // B
+		 0.5f, -0.5f,  0.0f, // C
+	};
+	
+	unsigned int VBO, VAO; // vertex buffer and array objects
+	glGenVertexArrays(1, &VAO); // create vertex arrays and assign memory location to VAO
+	glGenBuffers(1, &VBO); // create buffer and assign memory location to VBO
+	glBindBuffer(GL_ARRAY_BUFFER, VBO); // bind buffer to OpenGL Array buffer location
+	glBindVertexArray(VAO); // bind array object
+	// copy vertices to bound buffer
+	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+	
+	glVertexAttribPointer(
+		0, // location of the vertex attribute being configured (see vertexShaderSource)
+		3, // vertex is composed of 3 values
+		GL_FLOAT, // type of data of vertex coordinates
+		GL_FALSE, // no need to normalize the data
+		3 * sizeof(float), // memory space of a vertex (stride)
+		(void*)0 // offset of where data begins in buffer
+	);
+	// enable vertex attributes at location 0 (disabled by default)
+	glEnableVertexAttribArray(0);
+
+	glBindBuffer(GL_ARRAY_BUFFER, 0); // unbind, since glVertexAttribPointer registered VBO as the vertex attribute pointer
+	glBindVertexArray(0); // unbind, same as above for VAO
+	return VAO;
+}
+
 int main()
 {
-	std::cout << "Hello Window" << std::endl;
+	std::cout << "Hello Triangle" << std::endl;
 	setupGlfw();
 
-	GLFWwindow* window = glfwCreateWindow(800, 600, "LearnOpenGL", NULL, NULL);
+	GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "LearnOpenGL", NULL, NULL);
 	if (window == NULL)
 	{
 		std::cout << "Failed to create GLFW window" << std::endl;
@@ -47,33 +164,34 @@ int main()
 	// make window context the main context on the current thread
 	glfwMakeContextCurrent(window);
 	// get OS specific address of OpenGL function pointers and load into GLAD
-	gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
+	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
+	{
+		std::cout << "Failed to initialize GLAD" << std::endl;
+		return -1;
+	};
 	// register callback that initializes viewport matching window size 
 	glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
-	float r = 0.0f;
-	float g = 0.0f;
-	float b = 0.0f;
-	int t = 0;
+	unsigned int VAO, shaderProgram;
+	VAO = createVertexArrayObject();
+	shaderProgram = createShaderProgram();
 
 	// setup render loop
 	while (!glfwWindowShouldClose(window))
 	{
 		processInput(window);
+		
+		// set clear color buffer
+		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+		// clear buffer bit with color
+		glClear(GL_COLOR_BUFFER_BIT);
+
+		glUseProgram(shaderProgram);
+		glBindVertexArray(VAO);
+		glDrawArrays(GL_TRIANGLES, 0, 3);
 
 		glfwSwapBuffers(window); // show buffered pixels
 		glfwPollEvents(); // check keyboard, mouse and other events
-		
-		if (t > 60) 
-		{
-			r = fmod(r + 0.01f, 1.0f);
-			g = fmod(g + 0.01f, 1.0f);
-			b = fmod(b + 0.01f, 1.0f);
-			t = 0;
-		}
-		glClearColor(r, g, b, 1.0f);
-		glClear(GL_COLOR_BUFFER_BIT);
-		t += 1;
 	}
 	glfwTerminate(); // clear resources 
 
