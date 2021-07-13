@@ -120,18 +120,25 @@ unsigned int createVertexArrayObject()
 
 	float vertices[] = {
 	//    x      y      z
-		 0.0f,  0.5f,  0.0f, // A
-		-0.5f, -0.5f,  0.0f, // B
-		 0.5f, -0.5f,  0.0f, // C
+		 0.5f,  0.5f,  0.0f, // 0
+		 0.5f, -0.5f,  0.0f, // 1
+		-0.5f, -0.5f,  0.0f, // 2
+		-0.5f,  0.5f,  0.0f, // 3
+	};
+	unsigned int indices[] = {
+		0, 1, 3, // first triangle
+		1, 2, 3  // second triangle
 	};
 	
-	unsigned int VBO, VAO; // vertex buffer and array objects
+	unsigned int VBO, VAO, EBO; // vertex buffer, element buffer and array objects
 	glGenVertexArrays(1, &VAO); // create vertex arrays and assign memory location to VAO
 	glGenBuffers(1, &VBO); // create buffer and assign memory location to VBO
-	glBindBuffer(GL_ARRAY_BUFFER, VBO); // bind buffer to OpenGL Array buffer location
+	glGenBuffers(1, &EBO); // create buffer and assign memory location to EBO
 	glBindVertexArray(VAO); // bind array object
-	// copy vertices to bound buffer
-	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+	glBindBuffer(GL_ARRAY_BUFFER, VBO); // bind buffer to OpenGL Array buffer location
+	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW); // copy vertices to bound buffer
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO); // bind buffer to OpenGL Element Array buffer location
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 	
 	glVertexAttribPointer(
 		0, // location of the vertex attribute being configured (see vertexShaderSource)
@@ -146,12 +153,13 @@ unsigned int createVertexArrayObject()
 
 	glBindBuffer(GL_ARRAY_BUFFER, 0); // unbind, since glVertexAttribPointer registered VBO as the vertex attribute pointer
 	glBindVertexArray(0); // unbind, same as above for VAO
+	//glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0); // don't unbind the EBO since it's stored in the VAO
 	return VAO;
 }
 
 int main()
 {
-	std::cout << "Hello Triangle" << std::endl;
+	std::cout << "Hello Rectangle" << std::endl;
 	setupGlfw();
 
 	GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "LearnOpenGL", NULL, NULL);
@@ -188,7 +196,7 @@ int main()
 
 		glUseProgram(shaderProgram);
 		glBindVertexArray(VAO);
-		glDrawArrays(GL_TRIANGLES, 0, 3);
+		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0); // use indices to connect bound vertices 
 
 		glfwSwapBuffers(window); // show buffered pixels
 		glfwPollEvents(); // check keyboard, mouse and other events
