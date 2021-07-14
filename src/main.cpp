@@ -64,9 +64,12 @@ unsigned int createVertexShader()
 	// vertex shader in GLSL language
 	const char* vertexShaderSource = "#version 330 core\n"
 	"layout (location = 0) in vec3 aPos;\n"
+	"layout (location = 1) in vec3 aColor;\n"
+	"out vec3 ourColor;\n"
 	"void main()\n"
 	"{\n"
 	"   gl_Position = vec4(aPos, 1.0);\n"
+	"   ourColor = aColor;\n"
 	"}\0";
 
 	// create a vertex shader
@@ -83,7 +86,7 @@ unsigned int createFragmentShader()
 {
 	const char* fragmentShaderSource = "#version 330 core\n"
 	"out vec4 FragColor;\n"
-	"uniform vec4 ourColor;\n"
+	"in vec4 ourColor;\n"
 	"void main()\n"
 	"{\n"
 	"    FragColor = ourColor;\n"
@@ -121,9 +124,9 @@ unsigned int createVertexArrayObject()
 
 	float vertices[] = {
 	//    x      y      z
-		 0.5f,  0.5f,  0.0f, // 0
-		 0.5f, -0.5f,  0.0f, // 1
-		-0.5f, -0.5f,  0.0f, // 2
+		 0.0f,  0.5f,  0.0f, 1.0f,  0.0f,  0.0f, // 0
+		 0.5f, -0.5f,  0.0f, 0.0f,  1.0f,  0.0f, // 1
+		-0.5f, -0.5f,  0.0f, 0.0f,  0.0f,  1.0f  // 2
 	};
 	
 	unsigned int VBO, VAO; // vertex buffer, element buffer and array objects
@@ -135,14 +138,18 @@ unsigned int createVertexArrayObject()
 	
 	glVertexAttribPointer(
 		0, // location of the vertex attribute being configured (see vertexShaderSource)
-		3, // vertex is composed of 3 values
+		3, // this attribute is composed of 3 values
 		GL_FLOAT, // type of data of vertex coordinates
 		GL_FALSE, // no need to normalize the data
-		3 * sizeof(float), // memory space of a vertex (stride)
-		(void*)0 // offset of where data begins in buffer
+		6 * sizeof(float), // memory space of a vertex (stride)
+		(void*)0 // offset in bytes of where this attribute begins in buffer
 	);
 	// enable vertex attributes at location 0 (disabled by default)
 	glEnableVertexAttribArray(0);
+
+	// set color attributes pointer (location = 1) and enable
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3*sizeof(float)));
+	glEnableVertexAttribArray(1);
 
 	glBindBuffer(GL_ARRAY_BUFFER, 0); // unbind, since glVertexAttribPointer registered VBO as the vertex attribute pointer
 	glBindVertexArray(0); // unbind, same as above for VAO
@@ -188,7 +195,6 @@ int main()
 	unsigned int VAO, shaderProgram;
 	VAO = createVertexArrayObject();
 	shaderProgram = createShaderProgram();
-	int tt = 0;
 
 	// setup render loop
 	while (!glfwWindowShouldClose(window))
@@ -200,18 +206,7 @@ int main()
 		// clear buffer bit with color
 		glClear(GL_COLOR_BUFFER_BIT);
 
-		tt += 1;
-
-		float t = glfwGetTime();
-		float greenValue = (sin(t) / 2.0f) + 0.5;
-		if (tt >= 60)
-		{
-			std::cout << t << std::endl;
-			tt = 0;
-		}
-		int vertexColorLocation = glGetUniformLocation(shaderProgram, "ourColor");
 		glUseProgram(shaderProgram);
-		glUniform4f(vertexColorLocation, 0.0f, greenValue, 0.0f, 0.0f);
 
 		glBindVertexArray(VAO);
 		glDrawArrays(GL_TRIANGLES, 0, 3);
