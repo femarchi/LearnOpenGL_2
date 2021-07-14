@@ -66,7 +66,7 @@ unsigned int createVertexShader()
 	"layout (location = 0) in vec3 aPos;\n"
 	"void main()\n"
 	"{\n"
-	"   gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);\n"
+	"   gl_Position = vec4(aPos, 1.0);\n"
 	"}\0";
 
 	// create a vertex shader
@@ -83,9 +83,10 @@ unsigned int createFragmentShader()
 {
 	const char* fragmentShaderSource = "#version 330 core\n"
 	"out vec4 FragColor;\n"
+	"uniform vec4 ourColor;\n"
 	"void main()\n"
 	"{\n"
-	"    FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);\n"
+	"    FragColor = ourColor;\n"
 	"}\0";
 
 	unsigned int fragmentShader;
@@ -123,22 +124,14 @@ unsigned int createVertexArrayObject()
 		 0.5f,  0.5f,  0.0f, // 0
 		 0.5f, -0.5f,  0.0f, // 1
 		-0.5f, -0.5f,  0.0f, // 2
-		-0.5f,  0.5f,  0.0f, // 3
-	};
-	unsigned int indices[] = {
-		0, 1, 3, // first triangle
-		1, 2, 3  // second triangle
 	};
 	
-	unsigned int VBO, VAO, EBO; // vertex buffer, element buffer and array objects
+	unsigned int VBO, VAO; // vertex buffer, element buffer and array objects
 	glGenVertexArrays(1, &VAO); // create vertex arrays and assign memory location to VAO
 	glGenBuffers(1, &VBO); // create buffer and assign memory location to VBO
-	glGenBuffers(1, &EBO); // create buffer and assign memory location to EBO
 	glBindVertexArray(VAO); // bind array object
 	glBindBuffer(GL_ARRAY_BUFFER, VBO); // bind buffer to OpenGL Array buffer location
 	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW); // copy vertices to bound buffer
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO); // bind buffer to OpenGL Element Array buffer location
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 	
 	glVertexAttribPointer(
 		0, // location of the vertex attribute being configured (see vertexShaderSource)
@@ -153,8 +146,20 @@ unsigned int createVertexArrayObject()
 
 	glBindBuffer(GL_ARRAY_BUFFER, 0); // unbind, since glVertexAttribPointer registered VBO as the vertex attribute pointer
 	glBindVertexArray(0); // unbind, same as above for VAO
-	//glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0); // don't unbind the EBO since it's stored in the VAO
 	return VAO;
+}
+
+void animateTriangle()
+{
+	// GL_ARRAY_BUFFER must still be bound
+	float t = glfwGetTime();
+	float xPos = sin(t) / 2.0f;
+	float vertices[] = {
+		0.0f, 0.5f, 0.0f,
+		0.0f, -0.5f, 0.0f,
+		xPos, 0.0f, 0.0f
+	};
+	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 }
 
 int main()
@@ -183,6 +188,7 @@ int main()
 	unsigned int VAO, shaderProgram;
 	VAO = createVertexArrayObject();
 	shaderProgram = createShaderProgram();
+	int tt = 0;
 
 	// setup render loop
 	while (!glfwWindowShouldClose(window))
@@ -194,9 +200,21 @@ int main()
 		// clear buffer bit with color
 		glClear(GL_COLOR_BUFFER_BIT);
 
+		tt += 1;
+
+		float t = glfwGetTime();
+		float greenValue = (sin(t) / 2.0f) + 0.5;
+		if (tt >= 60)
+		{
+			std::cout << t << std::endl;
+			tt = 0;
+		}
+		int vertexColorLocation = glGetUniformLocation(shaderProgram, "ourColor");
 		glUseProgram(shaderProgram);
+		glUniform4f(vertexColorLocation, 0.0f, greenValue, 0.0f, 0.0f);
+
 		glBindVertexArray(VAO);
-		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0); // use indices to connect bound vertices 
+		glDrawArrays(GL_TRIANGLES, 0, 3);
 
 		glfwSwapBuffers(window); // show buffered pixels
 		glfwPollEvents(); // check keyboard, mouse and other events
