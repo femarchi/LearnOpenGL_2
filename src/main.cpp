@@ -2,10 +2,13 @@
 #include <glad/glad.h> // must be included before glfw
 #include <GLFW/glfw3.h>
 #include <cmath>
+#include <shader.h>
 
 const unsigned int OPENGL_CLIENT_API_VERSION = 3; // minimal version of openGL the client must use.
 const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 600;
+const char* VERTEX_SHADER_PATH = "C:/Projects/VS2019/LearnOpenGL_2/src/shaders/shader.vs";
+const char* FRAGMENT_SHADER_PATH = "C:/Projects/VS2019/LearnOpenGL_2/src/shaders/shader.fs";
 
 void setupGlfw()
 {
@@ -32,91 +35,6 @@ void processInput(GLFWwindow* window)
 	{
 		glfwSetWindowShouldClose(window, true);
 	}
-}
-
-void checkShaderCompilation(unsigned int shader, const char* type)
-{
-	int success;
-	char infoLog[512];
-	glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
-	if (!success)
-	{
-		glGetShaderInfoLog(shader, sizeof(infoLog), NULL, infoLog);
-		std::cout << "ERROR::SHADER::"<< type <<"::COMPILATION_FAILED\n" << infoLog << std::endl;
-	}
-}
-
-
-void checkProgramLink(unsigned int program)
-{
-	int success;
-	char infoLog[512];
-	glGetProgramiv(program, GL_LINK_STATUS, &success);
-	if (!success)
-	{
-		glGetProgramInfoLog(program, sizeof(infoLog), NULL, infoLog);
-		std::cout << "ERROR::SHADER::PROGRAM::LINK_FAILED\n" << infoLog << std::endl;
-	}
-}
-
-unsigned int createVertexShader()
-{
-	// vertex shader in GLSL language
-	const char* vertexShaderSource = "#version 330 core\n"
-	"layout (location = 0) in vec3 aPos;\n"
-	"layout (location = 1) in vec3 aColor;\n"
-	"out vec3 ourColor;\n"
-	"void main()\n"
-	"{\n"
-	"   gl_Position = vec4(aPos, 1.0);\n"
-	"   ourColor = aColor;\n"
-	"}\0";
-
-	// create a vertex shader
-	unsigned int vertexShader;
-	vertexShader = glCreateShader(GL_VERTEX_SHADER);
-	// source the code into the created shader and compile
-	glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
-	glCompileShader(vertexShader);
-	checkShaderCompilation(vertexShader, "VERTEX");
-	return vertexShader;
-}
-
-unsigned int createFragmentShader()
-{
-	const char* fragmentShaderSource = "#version 330 core\n"
-	"out vec4 FragColor;\n"
-	"in vec4 ourColor;\n"
-	"void main()\n"
-	"{\n"
-	"    FragColor = ourColor;\n"
-	"}\0";
-
-	unsigned int fragmentShader;
-	fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-	glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);
-	glCompileShader(fragmentShader);
-	checkShaderCompilation(fragmentShader, "FRAGMENT");
-	return fragmentShader;
-}
-
-unsigned int createShaderProgram() 
-{
-	unsigned int vertexShader = createVertexShader();
-	unsigned int fragmentShader = createFragmentShader();
-	// create a program to link the vertex and fragment shaders
-	unsigned int shaderProgram;
-	shaderProgram = glCreateProgram();
-	glAttachShader(shaderProgram, vertexShader);
-	glAttachShader(shaderProgram, fragmentShader);
-	glLinkProgram(shaderProgram);
-	checkProgramLink(shaderProgram);
-
-	// after shaders are linked we can delete them
-	glDeleteShader(shaderProgram);
-	glDeleteShader(fragmentShader);
-
-	return shaderProgram;
 }
 
 unsigned int createVertexArrayObject()
@@ -159,7 +77,7 @@ unsigned int createVertexArrayObject()
 void animateTriangle()
 {
 	// GL_ARRAY_BUFFER must still be bound
-	float t = glfwGetTime();
+	float t = (float)glfwGetTime();
 	float xPos = sin(t) / 2.0f;
 	float vertices[] = {
 		0.0f, 0.5f, 0.0f,
@@ -171,7 +89,7 @@ void animateTriangle()
 
 int main()
 {
-	std::cout << "Hello Rectangle" << std::endl;
+	std::cout << "Hello Shaders" << std::endl;
 	setupGlfw();
 
 	GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "LearnOpenGL", NULL, NULL);
@@ -192,9 +110,10 @@ int main()
 	// register callback that initializes viewport matching window size 
 	glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
-	unsigned int VAO, shaderProgram;
+	Shader ourShader(VERTEX_SHADER_PATH, FRAGMENT_SHADER_PATH);
+
+	unsigned int VAO;
 	VAO = createVertexArrayObject();
-	shaderProgram = createShaderProgram();
 
 	// setup render loop
 	while (!glfwWindowShouldClose(window))
@@ -206,7 +125,7 @@ int main()
 		// clear buffer bit with color
 		glClear(GL_COLOR_BUFFER_BIT);
 
-		glUseProgram(shaderProgram);
+		ourShader.use();
 
 		glBindVertexArray(VAO);
 		glDrawArrays(GL_TRIANGLES, 0, 3);
