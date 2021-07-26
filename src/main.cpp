@@ -11,6 +11,7 @@ const unsigned int SCR_HEIGHT = 600;
 const char* VERTEX_SHADER_PATH = "C:/Projects/VS2019/LearnOpenGL_2/src/shaders/shader.vs";
 const char* FRAGMENT_SHADER_PATH = "C:/Projects/VS2019/LearnOpenGL_2/src/shaders/shader.fs";
 const char* CONTAINER_IMG_PATH = "C:/Projects/VS2019/LearnOpenGL_2/assets/container.jpg";
+const char* FACE_IMG_PATH = "C:/Projects/VS2019/LearnOpenGL_2/assets/awesomeface.png";
 
 void setupGlfw()
 {
@@ -101,25 +102,27 @@ void animateTriangle()
 	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 }
 
-unsigned int generateTexture()
+unsigned int generateTexture(const char* path, int colorFormat)
 {
 	unsigned int texture; // array that holds generated texture
 	glGenTextures(1, &texture);
 	glBindTexture(GL_TEXTURE_2D, texture); // bind texture to OpenGL 2d texture pointer
 	 // set the texture wrapping parameters
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);	// set texture wrapping to GL_REPEAT (default wrapping method)
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT); // set texture wrapping to GL_REPEAT (default wrapping method)
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 	// set texture filtering parameters
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	// use stb_image loader to load image data
 	int width, height, nrChannels;
-	unsigned char* data = stbi_load(CONTAINER_IMG_PATH, &width, &height, &nrChannels, 0);
+	// flip texture on the y-axis because openGL expects 0.0 y-coordinate to be on the bottom
+	stbi_set_flip_vertically_on_load(true); 
+	unsigned char* data = stbi_load(path, &width, &height, &nrChannels, 0);
 
 	if (data)
 	{
 		// generate texture image and mipmaps from data
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+		glTexImage2D(GL_TEXTURE_2D, 0, colorFormat, width, height, 0, colorFormat, GL_UNSIGNED_BYTE, data);
 		glGenerateMipmap(GL_TEXTURE_2D);
 	}
 	else
@@ -158,9 +161,13 @@ int main()
 
 	Shader ourShader(VERTEX_SHADER_PATH, FRAGMENT_SHADER_PATH);
 
-	unsigned int VAO, texture;
+	unsigned int VAO, texture1, texture2;
 	VAO = createVertexArrayObject();
-	texture = generateTexture();
+	texture1 = generateTexture(CONTAINER_IMG_PATH, GL_RGB);
+	texture2 = generateTexture(FACE_IMG_PATH, GL_RGBA);
+	ourShader.use(); // must use shader before setting uniforms
+	ourShader.setInt("texture1", 0); // set texture1 as texture unit 0
+	ourShader.setInt("texture2", 1); // set texture2 as texture unit 1
 
 	// setup render loop
 	while (!glfwWindowShouldClose(window))
@@ -172,8 +179,10 @@ int main()
 		// clear buffer bit with color
 		glClear(GL_COLOR_BUFFER_BIT);
 
-		glActiveTexture(GL_TEXTURE0); // some drivers require the activation of the texture unit
-		glBindTexture(GL_TEXTURE_2D, texture);
+		glActiveTexture(GL_TEXTURE0); // set texture unit 0 as active before bind 
+		glBindTexture(GL_TEXTURE_2D, texture1);
+		glActiveTexture(GL_TEXTURE1); // set texture unit 1 as active before bind 
+		glBindTexture(GL_TEXTURE_2D, texture2);
 
 		ourShader.use();
 		glBindVertexArray(VAO);
