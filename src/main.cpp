@@ -4,6 +4,9 @@
 #include <cmath>
 #include <stb_image.h>
 #include <shader.h>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
 const unsigned int OPENGL_CLIENT_API_VERSION = 3; // minimal version of openGL the client must use.
 const unsigned int SCR_WIDTH = 800;
@@ -136,6 +139,17 @@ unsigned int generateTexture(const char* path, int colorFormat)
 	return texture;
 }
 
+void rotateContainer(unsigned int shaderId)
+{
+	// order of operations is inverse, first rotate then translate
+	glm::mat4 trans = glm::mat4(1.0f);
+	//trans = glm::scale(trans, glm::vec3(0.5f, 0.5f, 0.5f));
+	trans = glm::translate(trans, glm::vec3(0.5f, -0.5f, 0.0f));
+	trans = glm::rotate(trans, (float)glfwGetTime(), glm::vec3(0.0f, 0.0f, 1.0f));
+	unsigned int transformLoc = glGetUniformLocation(shaderId, "transform");
+	glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(trans));
+}
+
 int main()
 {
 	std::cout << "Hello Textures" << std::endl;
@@ -185,6 +199,7 @@ int main()
 		glBindTexture(GL_TEXTURE_2D, texture2);
 
 		ourShader.use();
+		rotateContainer(ourShader.ID);
 		glBindVertexArray(VAO);
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
