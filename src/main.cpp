@@ -270,6 +270,9 @@ int main()
 	// register callback that initializes viewport matching window size 
 	glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
+	// Enable OpenGL to test depth so vertices behind faces don't get rendered
+	glEnable(GL_DEPTH_TEST); 
+
 	Shader ourShader(VERTEX_SHADER_PATH, FRAGMENT_SHADER_PATH);
 
 	unsigned int VAO, texture1, texture2;
@@ -287,8 +290,8 @@ int main()
 		
 		// set clear color buffer
 		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-		// clear buffer bit with color
-		glClear(GL_COLOR_BUFFER_BIT);
+		// clear buffer bit with color and depth test buffer bit
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		glActiveTexture(GL_TEXTURE0); // set texture unit 0 as active before bind 
 		glBindTexture(GL_TEXTURE_2D, texture1);
