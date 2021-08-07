@@ -43,9 +43,8 @@ void processInput(GLFWwindow* window)
 	}
 }
 
-unsigned int createVertexArrayObject()
+unsigned int createPlaneVertexArrayObject()
 {
-
 	float vertices[] = {
 	//    x      y		z      r      g      b
 		 0.5f,  0.5f,  0.0f,   1.0f,  0.0f,  0.0f,   1.0f,  1.0f, // 0 top right
@@ -91,6 +90,7 @@ unsigned int createVertexArrayObject()
 	glBindVertexArray(0); // unbind, same as above for VAO
 	return VAO;
 }
+
 
 void animateTriangle()
 {
@@ -150,9 +150,106 @@ void rotateContainer(unsigned int shaderId)
 	glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(trans));
 }
 
+
+unsigned int createBoxVertexArrayObject() 
+{
+	// x y z | u v
+	float vertices[] = {
+		-0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
+		 0.5f, -0.5f, -0.5f,  1.0f, 0.0f,
+		 0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+		 0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+		-0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
+		-0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
+
+		-0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+		 0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
+		 0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
+		 0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
+		-0.5f,  0.5f,  0.5f,  0.0f, 1.0f,
+		-0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+
+		-0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+		-0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+		-0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+		-0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+		-0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+		-0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+
+		 0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+		 0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+		 0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+		 0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+		 0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+		 0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+
+		-0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+		 0.5f, -0.5f, -0.5f,  1.0f, 1.0f,
+		 0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
+		 0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
+		-0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+		-0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+
+		-0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
+		 0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+		 0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+		 0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+		-0.5f,  0.5f,  0.5f,  0.0f, 0.0f,
+		-0.5f,  0.5f, -0.5f,  0.0f, 1.0f
+	};
+
+	unsigned int VBO, VAO;
+	glGenVertexArrays(1, &VAO); // create vertex arrays and assign memory location to VAO
+	glGenBuffers(1, &VBO); // create buffer and assign memory location to VBO
+	glBindVertexArray(VAO); // bind array object
+	glBindBuffer(GL_ARRAY_BUFFER, VBO); // bind buffer to OpenGL Array buffer location
+	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW); // copy vertices to bound buffer
+	
+	// position attributes
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+	glEnableVertexAttribArray(0);
+
+	// texture attributes
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3*sizeof(float)));
+	glEnableVertexAttribArray(1);
+
+	return VAO;
+}
+
+void setShaderModelMatrix(unsigned int shaderId)
+{
+	glm::mat4 model = glm::mat4(1.0f);
+	// rotate model by t*50 degrees.
+	model = glm::rotate(model, (float)glfwGetTime() * glm::radians(50.0f), glm::vec3(0.5f, 1.0f, 0.0f));
+	unsigned int modelLoc = glGetUniformLocation(shaderId, "model");
+	glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+}
+
+void setShaderViewMatrix(unsigned int shaderId)
+{
+	glm::mat4 view = glm::mat4(1.0f);
+	// translate scene forward by 3
+	view = glm::translate(view, glm::vec3(0.0f, 0.0f, -3.0f)); 
+	unsigned int viewLoc = glGetUniformLocation(shaderId, "view");
+	glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+}
+
+void setShaderProjectionMatrix(unsigned int shaderId)
+{
+	// create a projection matrix to transform vertices into a 3d perspective
+	glm::mat4 projection;
+	float FoV = glm::radians(45.0f); // field of view - width of perspective frustrum
+	float aspectRatio = (float)SCR_WIDTH / (float)SCR_HEIGHT; // ratio of the window
+	float nearPlaneCoord = 0.1f; // view area starting z coord
+	float farPlaneCoord = 100.0f; // view area ending z coord
+	projection = glm::perspective(FoV, aspectRatio, nearPlaneCoord, farPlaneCoord);
+	unsigned int projectionLoc = glGetUniformLocation(shaderId, "projection");
+	glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
+}
+
 int main()
 {
-	std::cout << "Hello Textures" << std::endl;
+	std::cout << "Hello Coordinates" << std::endl;
 	setupGlfw();
 
 	GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "LearnOpenGL", NULL, NULL);
@@ -176,7 +273,7 @@ int main()
 	Shader ourShader(VERTEX_SHADER_PATH, FRAGMENT_SHADER_PATH);
 
 	unsigned int VAO, texture1, texture2;
-	VAO = createVertexArrayObject();
+	VAO = createBoxVertexArrayObject();
 	texture1 = generateTexture(CONTAINER_IMG_PATH, GL_RGB);
 	texture2 = generateTexture(FACE_IMG_PATH, GL_RGBA);
 	ourShader.use(); // must use shader before setting uniforms
@@ -199,9 +296,11 @@ int main()
 		glBindTexture(GL_TEXTURE_2D, texture2);
 
 		ourShader.use();
-		rotateContainer(ourShader.ID);
+		setShaderModelMatrix(ourShader.ID);
+		setShaderViewMatrix(ourShader.ID);
+		setShaderProjectionMatrix(ourShader.ID);
 		glBindVertexArray(VAO);
-		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+		glDrawArrays(GL_TRIANGLES, 0, 36);
 
 		glfwSwapBuffers(window); // show buffered pixels
 		glfwPollEvents(); // check keyboard, mouse and other events
