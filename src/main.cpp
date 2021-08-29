@@ -225,11 +225,41 @@ void setShaderModelMatrix(unsigned int shaderId)
 	glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
 }
 
+
+void createCamera()
+{
+	// position of the camera in 3d space
+	glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 3.0f);
+	// coords camera points to
+	glm::vec3 cameraTarget = glm::vec3(0.0f, 0.0f, 0.0f);
+	// inverse of direction camera points to because positive z means toward screen
+	glm::vec3 cameraDirection = glm::normalize(cameraPos - cameraTarget);
+	// produce an orthonormal 3d basis from the camera direction vector using Gram-Schmidt process!
+	// right is the vector perpendicular (cross product) to the up unit vector and the current camera direction
+	glm::vec3 cameraRight = glm::cross(glm::vec3(0.0f, 1.0f, 0.0f), cameraDirection);
+	// up is the vector perpendicular to the camera direction and the right vector
+	glm::vec3 cameraUp = glm::cross(cameraDirection, cameraRight);
+	
+	// glm already has a function to create all the math above, lookAt 
+	glm::mat4 view;
+	view = glm::lookAt(
+		glm::vec3(0.0f, 0.0f, 3.0f), // position
+		glm::vec3(0.0f, 0.0f, 0.0f), // target
+		glm::vec3(0.0f, 1.0f, 0.0f)  // up unit vector
+	);
+}
+
 void setShaderViewMatrix(unsigned int shaderId)
 {
-	glm::mat4 view = glm::mat4(1.0f);
-	// translate scene forward by 3
-	view = glm::translate(view, glm::vec3(0.0f, 0.0f, -3.0f)); 
+	const float radius = 10.0f;
+	float camX = sin(glfwGetTime()) * radius;
+	float camZ = cos(glfwGetTime()) * radius;
+	glm::mat4 view;
+	view = glm::lookAt(
+		glm::vec3(camX, 0.0, camZ), // camera position
+		glm::vec3(0.0f, 0.0f, 0.0f),// camera target (origin)
+		glm::vec3(0.0f, 1.0f, 0.0f) // "up" unit vector
+	);
 	unsigned int viewLoc = glGetUniformLocation(shaderId, "view");
 	glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
 }
@@ -276,7 +306,7 @@ void drawMultipleCubes(unsigned int shaderId)
 
 int main()
 {
-	std::cout << "Hello Coordinates" << std::endl;
+	std::cout << "Hello Camera" << std::endl;
 	setupGlfw();
 
 	GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "LearnOpenGL", NULL, NULL);
