@@ -16,6 +16,12 @@ const char* FRAGMENT_SHADER_PATH = "C:/Projects/VS2019/LearnOpenGL_2/src/shaders
 const char* CONTAINER_IMG_PATH = "C:/Projects/VS2019/LearnOpenGL_2/assets/container.jpg";
 const char* FACE_IMG_PATH = "C:/Projects/VS2019/LearnOpenGL_2/assets/awesomeface.png";
 
+glm::vec3 cameraPos   = glm::vec3(0.0f, 0.0f, 3.0f);
+glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
+glm::vec3 cameraUp    = glm::vec3(0.0f, 1.0f, 0.0f);
+float deltaTime = 0.0f;
+float lastFrame = 0.0f;
+
 void setupGlfw()
 {
 	// initialize glfw
@@ -41,6 +47,17 @@ void processInput(GLFWwindow* window)
 	{
 		glfwSetWindowShouldClose(window, true);
 	}
+	const float cameraSpeed = 2.5f * deltaTime;
+	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+		cameraPos += cameraSpeed * cameraFront;
+	if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+		cameraPos -= cameraSpeed * cameraFront;
+	if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+		// subtract "right" unit vector
+		cameraPos -= glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
+	if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+		// add "right" unit vector
+		cameraPos += glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
 }
 
 unsigned int createPlaneVertexArrayObject()
@@ -251,14 +268,11 @@ void createCamera()
 
 void setShaderViewMatrix(unsigned int shaderId)
 {
-	const float radius = 10.0f;
-	float camX = sin(glfwGetTime()) * radius;
-	float camZ = cos(glfwGetTime()) * radius;
 	glm::mat4 view;
 	view = glm::lookAt(
-		glm::vec3(camX, 0.0, camZ), // camera position
-		glm::vec3(0.0f, 0.0f, 0.0f),// camera target (origin)
-		glm::vec3(0.0f, 1.0f, 0.0f) // "up" unit vector
+		cameraPos,               // camera position
+		cameraPos + cameraFront, // camera target (origin)
+		cameraUp                 // "up" unit vector
 	);
 	unsigned int viewLoc = glGetUniformLocation(shaderId, "view");
 	glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
@@ -268,7 +282,7 @@ void setShaderProjectionMatrix(unsigned int shaderId)
 {
 	// create a projection matrix to transform vertices into a 3d perspective
 	glm::mat4 projection;
-	float FoV = glm::radians(45.0f); // field of view - width of perspective frustrum
+	constexpr float FoV = glm::radians(45.0f); // field of view - width of perspective frustrum
 	float aspectRatio = (float)SCR_WIDTH / (float)SCR_HEIGHT; // ratio of the window
 	float nearPlaneCoord = 0.1f; // view area starting z coord
 	float farPlaneCoord = 100.0f; // view area ending z coord
@@ -343,6 +357,10 @@ int main()
 	// setup render loop
 	while (!glfwWindowShouldClose(window))
 	{
+		float currentFrame = glfwGetTime();
+		deltaTime = currentFrame - lastFrame;
+		lastFrame = currentFrame;
+
 		processInput(window);
 		
 		// set clear color buffer
