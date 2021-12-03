@@ -26,6 +26,7 @@ float yaw   = -90.0f;        // angle of rotation around y axis (up) :: negative
 float pitch = 0.0f;          // angle of rotation around x axis (right)
 float lastX = 800.0f / 2.0;  // last X mouse position (scr_height / 2 = middleX)
 float lastY = 800.0f / 2.0;  // last Y mouse position (scr_width / 2 = middleY)
+float fov = 45.0f;           // field of view - width of perspective frustrum
 
 // timing
 float deltaTime = 0.0f;
@@ -87,6 +88,15 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos)
 	direction.y = sin(glm::radians(pitch));
 	direction.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
 	cameraFront = glm::normalize(direction);
+}
+
+void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
+{
+	fov -= (float)yoffset;
+	if (fov < 1.0f)
+		fov = 1.0f;
+	if (fov > 45.0f)
+		fov = 45.0f;
 }
 
 void processInput(GLFWwindow* window)
@@ -331,11 +341,10 @@ void setShaderProjectionMatrix(unsigned int shaderId)
 {
 	// create a projection matrix to transform vertices into a 3d perspective
 	glm::mat4 projection;
-	constexpr float FoV = glm::radians(45.0f); // field of view - width of perspective frustrum
 	float aspectRatio = (float)SCR_WIDTH / (float)SCR_HEIGHT; // ratio of the window
 	float nearPlaneCoord = 0.1f; // view area starting z coord
 	float farPlaneCoord = 100.0f; // view area ending z coord
-	projection = glm::perspective(FoV, aspectRatio, nearPlaneCoord, farPlaneCoord);
+	projection = glm::perspective(glm::radians(fov), aspectRatio, nearPlaneCoord, farPlaneCoord);
 	unsigned int projectionLoc = glGetUniformLocation(shaderId, "projection");
 	glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
 }
@@ -406,6 +415,7 @@ int main()
 	// hide mouse cursor and capture it
 	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 	glfwSetCursorPosCallback(window, mouse_callback);
+	glfwSetScrollCallback(window, scroll_callback);
 
 	// setup render loop
 	while (!glfwWindowShouldClose(window))
