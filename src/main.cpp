@@ -16,9 +16,18 @@ const char* FRAGMENT_SHADER_PATH = "C:/Projects/VS2019/LearnOpenGL_2/src/shaders
 const char* CONTAINER_IMG_PATH = "C:/Projects/VS2019/LearnOpenGL_2/assets/container.jpg";
 const char* FACE_IMG_PATH = "C:/Projects/VS2019/LearnOpenGL_2/assets/awesomeface.png";
 
+// camera
 glm::vec3 cameraPos   = glm::vec3(0.0f, 0.0f, 3.0f);
 glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
 glm::vec3 cameraUp    = glm::vec3(0.0f, 1.0f, 0.0f);
+
+bool firstMouse = true;
+float yaw   = -90.0f;        // angle of rotation around y axis (up) :: negative because front is -1z
+float pitch = 0.0f;          // angle of rotation around x axis (right)
+float lastX = 800.0f / 2.0;  // last X mouse position (scr_height / 2 = middleX)
+float lastY = 800.0f / 2.0;  // last Y mouse position (scr_width / 2 = middleY)
+
+// timing
 float deltaTime = 0.0f;
 float lastFrame = 0.0f;
 
@@ -38,6 +47,46 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
 	int xPos = 0;
 	int yPos = 0;
 	glViewport(xPos, yPos, width, height);
+}
+
+/* Callback that is called every frame with the current mouse position on the window */
+void mouse_callback(GLFWwindow* window, double xpos, double ypos)
+{
+	// avoid camera jump when mouse is captured
+	if (firstMouse)
+	{
+		lastX = xpos;
+		lastY = ypos;
+		firstMouse = false;
+	}
+
+	// distance between the last and the current mouse position 
+	float xoffset = xpos - lastX;
+	float yoffset = lastY - ypos;
+	lastX = xpos;
+	lastY = ypos;
+
+	// reduce distances to just 10% for smooth movement
+	float sensitivity = 0.1f;
+	xoffset *= sensitivity;
+	yoffset *= sensitivity;
+
+	// increment horizontal (yaw) and vertical (pitch) rotations
+	yaw += xoffset;
+	pitch += yoffset;
+
+	// keep vertical movement pointing to front (no vertical loop)
+	if (pitch > 89.0f)
+		pitch = 89.0f;
+	if (pitch < -89.0f)
+		pitch = -89.0f;
+
+	// calculate the direction vector from the resulting angles
+	glm::vec3 direction;
+	direction.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
+	direction.y = sin(glm::radians(pitch));
+	direction.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
+	cameraFront = glm::normalize(direction);
 }
 
 void processInput(GLFWwindow* window)
@@ -353,6 +402,10 @@ int main()
 	ourShader.use(); // must use shader before setting uniforms
 	ourShader.setInt("texture1", 0); // set texture1 as texture unit 0
 	ourShader.setInt("texture2", 1); // set texture2 as texture unit 1
+
+	// hide mouse cursor and capture it
+	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+	glfwSetCursorPosCallback(window, mouse_callback);
 
 	// setup render loop
 	while (!glfwWindowShouldClose(window))
