@@ -7,6 +7,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include <camera.h>
 
 const unsigned int OPENGL_CLIENT_API_VERSION = 3; // minimal version of openGL the client must use.
 const unsigned int SCR_WIDTH = 800;
@@ -16,21 +17,15 @@ const char* FRAGMENT_SHADER_PATH = "C:/Projects/VS2019/LearnOpenGL_2/src/shaders
 const char* CONTAINER_IMG_PATH = "C:/Projects/VS2019/LearnOpenGL_2/assets/container.jpg";
 const char* FACE_IMG_PATH = "C:/Projects/VS2019/LearnOpenGL_2/assets/awesomeface.png";
 
-// camera
-glm::vec3 cameraPos   = glm::vec3(0.0f, 0.0f, 3.0f);
-glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
-glm::vec3 cameraUp    = glm::vec3(0.0f, 1.0f, 0.0f);
-
 bool firstMouse = true;
-float yaw   = -90.0f;        // angle of rotation around y axis (up) :: negative because front is -1z
-float pitch = 0.0f;          // angle of rotation around x axis (right)
 float lastX = 800.0f / 2.0;  // last X mouse position (scr_height / 2 = middleX)
 float lastY = 800.0f / 2.0;  // last Y mouse position (scr_width / 2 = middleY)
-float fov = 45.0f;           // field of view - width of perspective frustrum
 
 // timing
 float deltaTime = 0.0f;
 float lastFrame = 0.0f;
+
+Camera camera;
 
 void setupGlfw()
 {
@@ -67,36 +62,12 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos)
 	lastX = xpos;
 	lastY = ypos;
 
-	// reduce distances to just 10% for smooth movement
-	float sensitivity = 0.1f;
-	xoffset *= sensitivity;
-	yoffset *= sensitivity;
-
-	// increment horizontal (yaw) and vertical (pitch) rotations
-	yaw += xoffset;
-	pitch += yoffset;
-
-	// keep vertical movement pointing to front (no vertical loop)
-	if (pitch > 89.0f)
-		pitch = 89.0f;
-	if (pitch < -89.0f)
-		pitch = -89.0f;
-
-	// calculate the direction vector from the resulting angles
-	glm::vec3 direction;
-	direction.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
-	direction.y = sin(glm::radians(pitch));
-	direction.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
-	cameraFront = glm::normalize(direction);
+	camera.ProcessMouseMovement(xoffset, yoffset);
 }
 
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
 {
-	fov -= (float)yoffset;
-	if (fov < 1.0f)
-		fov = 1.0f;
-	if (fov > 45.0f)
-		fov = 45.0f;
+	camera.ProcessMouseScroll(yoffset);
 }
 
 void processInput(GLFWwindow* window)
@@ -106,17 +77,14 @@ void processInput(GLFWwindow* window)
 	{
 		glfwSetWindowShouldClose(window, true);
 	}
-	const float cameraSpeed = 2.5f * deltaTime;
 	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-		cameraPos += cameraSpeed * cameraFront;
+		camera.ProcessKeyboard(Camera_Movement::FORWARD, deltaTime);
 	if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-		cameraPos -= cameraSpeed * cameraFront;
+		camera.ProcessKeyboard(Camera_Movement::BACKWARD, deltaTime);
 	if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-		// subtract "right" unit vector
-		cameraPos -= glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
+		camera.ProcessKeyboard(Camera_Movement::LEFT, deltaTime);
 	if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-		// add "right" unit vector
-		cameraPos += glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
+		camera.ProcessKeyboard(Camera_Movement::RIGHT, deltaTime);
 }
 
 unsigned int createPlaneVertexArrayObject()
@@ -302,36 +270,13 @@ void setShaderModelMatrix(unsigned int shaderId)
 }
 
 
-void createCamera()
-{
-	// position of the camera in 3d space
-	glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 3.0f);
-	// coords camera points to
-	glm::vec3 cameraTarget = glm::vec3(0.0f, 0.0f, 0.0f);
-	// inverse of direction camera points to because positive z means toward screen
-	glm::vec3 cameraDirection = glm::normalize(cameraPos - cameraTarget);
-	// produce an orthonormal 3d basis from the camera direction vector using Gram-Schmidt process!
-	// right is the vector perpendicular (cross product) to the up unit vector and the current camera direction
-	glm::vec3 cameraRight = glm::cross(glm::vec3(0.0f, 1.0f, 0.0f), cameraDirection);
-	// up is the vector perpendicular to the camera direction and the right vector
-	glm::vec3 cameraUp = glm::cross(cameraDirection, cameraRight);
-	
-	// glm already has a function to create all the math above, lookAt 
-	glm::mat4 view;
-	view = glm::lookAt(
-		glm::vec3(0.0f, 0.0f, 3.0f), // position
-		glm::vec3(0.0f, 0.0f, 0.0f), // target
-		glm::vec3(0.0f, 1.0f, 0.0f)  // up unit vector
-	);
-}
-
 void setShaderViewMatrix(unsigned int shaderId)
 {
 	glm::mat4 view;
 	view = glm::lookAt(
-		cameraPos,               // camera position
-		cameraPos + cameraFront, // camera target (origin)
-		cameraUp                 // "up" unit vector
+		camera.Position,
+		camera.Position + camera.Front, // camera target (origin)
+		camera.Up
 	);
 	unsigned int viewLoc = glGetUniformLocation(shaderId, "view");
 	glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
@@ -344,7 +289,7 @@ void setShaderProjectionMatrix(unsigned int shaderId)
 	float aspectRatio = (float)SCR_WIDTH / (float)SCR_HEIGHT; // ratio of the window
 	float nearPlaneCoord = 0.1f; // view area starting z coord
 	float farPlaneCoord = 100.0f; // view area ending z coord
-	projection = glm::perspective(glm::radians(fov), aspectRatio, nearPlaneCoord, farPlaneCoord);
+	projection = glm::perspective(glm::radians(camera.Zoom), aspectRatio, nearPlaneCoord, farPlaneCoord);
 	unsigned int projectionLoc = glGetUniformLocation(shaderId, "projection");
 	glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
 }
@@ -403,6 +348,7 @@ int main()
 	glEnable(GL_DEPTH_TEST); 
 
 	Shader ourShader(VERTEX_SHADER_PATH, FRAGMENT_SHADER_PATH);
+	camera = Camera();
 
 	unsigned int VAO, texture1, texture2;
 	VAO = createBoxVertexArrayObject();
